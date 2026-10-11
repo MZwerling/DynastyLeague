@@ -3,24 +3,16 @@ source("scripts/master.R")
 #read in Maps
 Owner_map = read.csv("data/DynastyOwnerMapping.csv")
 Pick_map = read.csv("data/PickMap.csv")
+Pick_Fix = read.csv("data/PickFixMap.csv")
 Pick_OrigOwner = read.csv("data/PickOriginalOwners.csv")
 Schedule_map = read.csv("data/NFL Schedule.csv") %>% 
   mutate(Timestamp = as.POSIXct(Timestamp, format = "%m/%d/%Y %H:%M:%S"))
 
 #Bring in Transactions data
-Trans_23 = ff_transactions(dyno_2023)
-Trans_24 = ff_transactions(dyno_2024) %>% 
-  select(-waiver_priority)
-Trans_25 = ff_transactions(dyno_2025)%>% 
-  select(-waiver_priority) 
-Trans_26 = ff_transactions(dyno_2026)%>% 
-  select(-waiver_priority)
+Trans_26 = ff_transactions(dyno_2026)
 
 #load in trades, and filter down to picks that were traded
-trades = Trans_23 %>% 
-  rbind(Trans_24) %>% 
-  rbind(Trans_25) %>%
-  rbind(Trans_26) %>%
+trades = Trans_26 %>%
   filter(grepl("trade",type),
          grepl("round",player_id),
          type_desc == "traded_for") %>% 
@@ -35,18 +27,16 @@ trades = Trans_23 %>%
   #find where pick ended up
   left_join(Owner_map %>% 
               rename(pick_originalowner = franchise_id, Owner=owner)) %>% 
-  mutate(Round = ifelse(pick_round == 1, 1,2),
-         Round = ifelse(pick_year == 2023, 1,Round)) %>% 
+  mutate(pick_round = as.numeric(pick_round)) %>% 
+  mutate(Round = ifelse(pick_year != 2026 & pick_round == 1, 1,2),
+         Round = ifelse(pick_year == 2026 & pick_round %% 2 == 0, 1,2)) %>% 
   left_join(Pick_OrigOwner %>% 
               rename(pick_year = Year)) %>% 
   rename(pick_original_owner = Owner) %>% 
   mutate(player_name = "Pick") %>% 
   select(-pick_originalowner,-Round) %>% 
   #add in players that were traded
-  bind_rows(Trans_23 %>% 
-              rbind(Trans_24) %>% 
-              rbind(Trans_25) %>%
-              rbind(Trans_26) %>% 
+  bind_rows(Trans_26 %>% 
               filter(grepl("trade",type),
                      !grepl("round",player_id),
                      !grepl("bbid",player_id),
@@ -54,10 +44,7 @@ trades = Trans_23 %>%
               select(-player_id,-franchise_name,-team,-bbid_amount,-comment) %>% 
               mutate(franchise_id = as.integer(franchise_id))) %>% 
   #add in faab that was traded
-  bind_rows(Trans_23 %>% 
-          rbind(Trans_24) %>% 
-          rbind(Trans_25) %>%
-          rbind(Trans_26) %>% 
+  bind_rows(Trans_26 %>% 
           filter(grepl("bbid",player_id),
                  type_desc == "traded_for") %>% 
           mutate(player_name = gsub("bbid_","FAAB ",player_id),
@@ -69,12 +56,12 @@ trades = Trans_23 %>%
          pick_year,pick_round,pick = Pick,pick_original_owner) %>% 
   mutate(pick_round = as.integer(pick_round)) %>% 
   #add in data on what players were drafted with traded picks
-  left_join(ff_draft(dyno_2023) %>% 
-              rbind(ff_draft(dyno_2024)) %>% 
-              rbind(ff_draft(dyno_2025)) %>% 
-              rbind(ff_draft(dyno_2026)) %>% 
+  left_join(ff_draft(dyno_2026) %>% 
               select(pick_year = season,pick_round = round,pick,drafted_player = player_name) %>% 
-              mutate(pick_year = as.integer(pick_year))) %>% 
+              mutate(pick_year = as.integer(pick_year)) |> 
+              left_join(Pick_Fix) |> 
+              mutate(pick = ifelse(pick_round>2, real_pick,pick)) |> 
+              select(-real_pick)) %>% 
   arrange(Owner) 
 
 trades = trades %>% 
@@ -86,10 +73,7 @@ trades = trades %>%
          PickKnown = ifelse(pick_date>timestamp,"No","Yes")) %>% 
   select(-pick_date)
 
-Scoring = ff_scoringhistory(dyno_2025, season = 2023) %>% 
-  rbind(ff_scoringhistory(dyno_2025, season = 2024)) %>% 
-  rbind(ff_scoringhistory(dyno_2025, season = 2025)) %>%
-  rbind(ff_scoringhistory(dyno_2025, season = 2026)) %>%
+Scoring = ff_scoringhistory(dyno_2026, season = 2026) %>% 
   mutate(player_name = gsub(" Jr.","",player_name),
          player_name = gsub("'","",player_name) ) %>% 
   filter(week <18)
@@ -132,6 +116,6 @@ trade_tracker_final = trade_tracker %>%
   ungroup
 
 sheet_write(trade_tracker_final,
-            ss = "https://docs.google.com/spreadsheets/d/1asR4OJwjrwA8DVGsgO7TZlEnq3ngEGnI6L63XV7BMOI/edit?usp=sharing",
+            ss = "https://docs.google.com/spreadsheets/d/1QXuwwPvfWRkJPZb0nW5xduWh-6LlX7tgk1inKEK0o0k/edit?gid=230262269#gid=230262269",
             sheet = "Unformatted")
 
