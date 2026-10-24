@@ -60,7 +60,8 @@ trades = Trans_26 %>%
               select(pick_year = season,pick_round = round,pick,drafted_player = player_name) %>% 
               mutate(pick_year = as.integer(pick_year)) |> 
               left_join(Pick_Fix) |> 
-              mutate(pick = ifelse(pick_round>2, real_pick,pick)) |> 
+              mutate(pick = ifelse(pick_round==2, real_pick,pick)) |> 
+              mutate(pick = ifelse(pick_round %% 2 != 0,real_pick,pick)) |> 
               select(-real_pick)) %>% 
   arrange(Owner) 
 
@@ -85,8 +86,10 @@ for(x in unique(trades$Trade_ID)) {
     filter(Trade_ID == x) %>% 
     mutate(player_name = gsub(" Jr.","",player_name),
            player_name = gsub("'","",player_name),
+           player_name = gsub(" III","",player_name),
            drafted_player = gsub(" Jr.","",drafted_player),
-           drafted_player = gsub("'","",drafted_player)) %>% 
+           drafted_player = gsub("'","",drafted_player),
+           drafted_player = gsub(" III","",drafted_player)) %>% 
     mutate(player = ifelse(player_name =="Pick", drafted_player,player_name))
   
   traded_players = Scoring %>% 
