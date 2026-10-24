@@ -86,10 +86,10 @@ trades = trades %>%
          PickKnown = ifelse(pick_date>timestamp,"No","Yes")) %>% 
   select(-pick_date)
 
-Scoring = ff_scoringhistory(dyno_2025, season = 2023) %>% 
-  rbind(ff_scoringhistory(dyno_2025, season = 2024)) %>% 
+Scoring = ff_scoringhistory(dyno_2023, season = 2023) %>% 
+  rbind(ff_scoringhistory(dyno_2024, season = 2024)) %>% 
   rbind(ff_scoringhistory(dyno_2025, season = 2025)) %>%
-  rbind(ff_scoringhistory(dyno_2025, season = 2026)) %>%
+  rbind(ff_scoringhistory(dyno_2026, season = 2026)) %>%
   mutate(player_name = gsub(" Jr.","",player_name),
          player_name = gsub("'","",player_name) ) %>% 
   filter(week <18)
