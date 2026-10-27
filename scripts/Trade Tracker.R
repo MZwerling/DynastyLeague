@@ -29,7 +29,8 @@ trades = Trans_26 %>%
               rename(pick_originalowner = franchise_id, Owner=owner)) %>% 
   mutate(pick_round = as.numeric(pick_round)) %>% 
   mutate(Round = ifelse(pick_year != 2026 & pick_round == 1, 1,2),
-         Round = ifelse(pick_year == 2026 & pick_round %% 2 == 0, 1,2)) %>% 
+         Round = ifelse(pick_year == 2026 & pick_round %% 2 == 0 & pick_round >2, 1,
+                        ifelse(pick_round ==1,1,2))) %>% 
   left_join(Pick_OrigOwner %>% 
               rename(pick_year = Year)) %>% 
   rename(pick_original_owner = Owner) %>% 
@@ -60,8 +61,8 @@ trades = Trans_26 %>%
               select(pick_year = season,pick_round = round,pick,drafted_player = player_name) %>% 
               mutate(pick_year = as.integer(pick_year)) |> 
               left_join(Pick_Fix) |> 
-              mutate(pick = ifelse(pick_round==2, real_pick,pick)) |> 
-              mutate(pick = ifelse(pick_round %% 2 != 0,real_pick,pick)) |> 
+              mutate(pick = ifelse(pick_round==2,real_pick,pick)) |> 
+              mutate(pick = ifelse(pick_round>2 & pick_round %% 2 != 0,real_pick,pick)) |> 
               select(-real_pick)) %>% 
   arrange(Owner) 
 
@@ -76,7 +77,8 @@ trades = trades %>%
 
 Scoring = ff_scoringhistory(dyno_2026, season = 2026) %>% 
   mutate(player_name = gsub(" Jr.","",player_name),
-         player_name = gsub("'","",player_name) ) %>% 
+         player_name = gsub("'","",player_name),
+         player_name = gsub(" III","",player_name)) %>% 
   filter(week <18)
 
 trade_tracker = data.frame()
@@ -119,6 +121,6 @@ trade_tracker_final = trade_tracker %>%
   ungroup
 
 sheet_write(trade_tracker_final,
-            ss = "https://docs.google.com/spreadsheets/d/1QXuwwPvfWRkJPZb0nW5xduWh-6LlX7tgk1inKEK0o0k/edit?gid=230262269#gid=230262269",
+            ss = "https://docs.google.com/spreadsheets/d/1NxRmNQqNiTntCz7khaETnVI3QlUVEGEgz8hT1UcTKok/edit?gid=230262269#gid=230262269",
             sheet = "Unformatted")
 
